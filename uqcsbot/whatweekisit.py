@@ -21,7 +21,6 @@ class Semester(NamedTuple):
     name: str
     start_date: datetime
     end_date: datetime
-    weeks: List[str]
 
 
 def date_to_string(date: datetime):
@@ -67,7 +66,6 @@ def get_semester_times(markup: str) -> List[Semester]:
                     "name": semester_name,
                     "start_date": None,
                     "end_date": None,
-                    "weeks": None,
                 }
 
                 for event in semester_content.find_all("li"):
@@ -81,8 +79,10 @@ def get_semester_times(markup: str) -> List[Semester]:
                     if "Classes start" in text:
                         semester["start_date"] = get_date()
 
-                    elif f"{semester_name} classes end" in text:
+                    elif f"{semester_name} classes end" in text \
+                        or f"{semester_name} ends" in text:
                         semester["end_date"] = get_date()
+
 
                 semester = Semester(**semester)
                 semesters.append(semester)
@@ -112,7 +112,7 @@ def get_semester_week(
             weekday = checked_date.strftime("%A")
             semester_name = semester.name
             return semester_name, week_index, weekday
-    return None
+    return None     
 
 
 class WhatWeekIsIt(commands.Cog):
