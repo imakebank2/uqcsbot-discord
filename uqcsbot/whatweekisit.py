@@ -1,9 +1,10 @@
 import discord
 from discord import app_commands
-from typing import NamedTuple, List, Tuple, Optional
+from typing import List, Tuple, Optional
 from zoneinfo import ZoneInfo
 from datetime import datetime
 from random import choice
+from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
 from discord.ext import commands
@@ -17,7 +18,8 @@ DATE_FORMAT = "%d/%m/%Y"
 
 
 # Semester information
-class Semester(NamedTuple):
+@dataclass
+class Semester:
     name: str
     start_date: datetime
     end_date: datetime
@@ -62,11 +64,8 @@ def get_semester_times(markup: str) -> List[Semester]:
 
                 semester_content = element.find("div", class_="uq-accordion__content")
 
-                semester = {
-                    "name": semester_name,
-                    "start_date": None,
-                    "end_date": None,
-                }
+                start_date: datetime | None = None
+                end_date: datetime | None = None
 
                 for event in semester_content.find_all("li"):
                     text = event.get_text()
@@ -77,15 +76,16 @@ def get_semester_times(markup: str) -> List[Semester]:
                         return dt.replace(tzinfo=ZoneInfo("Australia/Brisbane"))
 
                     if "Classes start" in text:
-                        semester["start_date"] = get_date()
+                        start_date = get_date()
 
-                    elif f"{semester_name} classes end" in text \
-                        or f"{semester_name} ends" in text:
-                        semester["end_date"] = get_date()
+                    elif (
+                        f"{semester_name} classes end" in text
+                        or f"{semester_name} ends" in text
+                    ):
+                        end_date = get_date()
 
-
-                semester = Semester(**semester)
-                semesters.append(semester)
+                if start_date and end_date:
+                    semesters.append(Semester(semester_name, start_date, end_date))
 
     return semesters
 
@@ -112,7 +112,7 @@ def get_semester_week(
             weekday = checked_date.strftime("%A")
             semester_name = semester.name
             return semester_name, week_index, weekday
-    return None     
+    return None
 
 
 class WhatWeekIsIt(commands.Cog):
@@ -151,8 +151,9 @@ class WhatWeekIsIt(commands.Cog):
 
         semester_tuple = get_semester_week(semesters, check_date)
 
+        date = date_to_string(check_date)
+
         if not semester_tuple:
-            date = date_to_string(check_date)
             years = BeautifulSoup(calendar_page, "html.parser").find_all("h3")
             year_numbers = [int(year.get_text(strip=True)) for year in years]
 
@@ -163,27 +164,26 @@ class WhatWeekIsIt(commands.Cog):
         else:
             semester_name, week_index, weekday = semester_tuple
             week_name = "Week " + str(week_index)
-            if date != None:
-                message = f"The week of {date} is in:\n> "
-                message += choice(
-                    [
-                        "The week we're in is:",
-                        "The current week is:",
-                        "Currently, the week is:",
-                        "Hey, look at the time:",
-                        "Can you believe that it's already:",
-                        "Time flies when you're having fun:",
-                        "Maybe time's just a construct of human perception:",
-                        "Time waits for noone:",
-                        "This week is:",
-                        "It is currently:",
-                        "The week is",
-                        "The week we're currently in is:",
-                        "Right now we are in:",
-                        "Good heavens, would you look at the time:",
-                        "What's the time, mister wolf? It's:",
-                    ]
-                )
+            message = f"The week of {date} is in:\n> "
+            message += choice(
+                [
+                    "The week we're in is:",
+                    "The current week is:",
+                    "Currently, the week is:",
+                    "Hey, look at the time:",
+                    "Can you believe that it's already:",
+                    "Time flies when you're having fun:",
+                    "Maybe time's just a construct of human perception:",
+                    "Time waits for noone:",
+                    "This week is:",
+                    "It is currently:",
+                    "The week is",
+                    "The week we're currently in is:",
+                    "Right now we are in:",
+                    "Good heavens, would you look at the time:",
+                    "What's the time, mister wolf? It's:",
+                ]
+            )
 
             message += f"\n> {weekday}, {week_name} of {semester_name}"
 
